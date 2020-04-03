@@ -9,224 +9,193 @@
 const mongoose = require('mongoose')
 //import Schema
 const ResearcherSchema = require('../model/researcherModel')
-
+//Create a variable of type mongoose schema for Researcher
 const Researcher = mongoose.model('ResearcherSchema', ResearcherSchema)
 //importing bcrypt to hash the user entered password for security.
 const bcrypt = require('bcrypt')
-//importing jwt token to assign to the user once authenticated
-const jwt = require('jsonwebtoken')
 //importing file system to get the public and private key for creating public and private keys.
 const fs = require('fs')
 //private key path
-var privateKEY = fs.readFileSync('./.env/private.key', 'utf8')
+var privateKEY = fs.readFileSync('./.env/researcher_keys/private.key', 'utf8')
 //public key path
-var publicKEY = fs.readFileSync('./.env/public.key', 'utf8')
-
-//Defining the Sign in options. To be used in json web tokens
-var signOptions = {
-  expiresIn: '12h',
-  algorithm: 'RS256'
-}
-
+var publicKEY = fs.readFileSync('./.env/researcher_keys/public.key', 'utf8')
+//Declare the file name
 const FILE_NAME = 'researcherController.js'
-const LOGGER = require('../Logger/logger')
+//import constants file
+const CONSTANTS = require('../CONSTANTS/constants')
+//import mongoose queries
+const mongooseMiddleware = require('../middleware/mongooseMiddleware')
+//import login controller
+const loginController = require('./common_controllers/loginController')
+//import add user queries
+const adduser = require('./common_controllers/addUserController')
+//import post authentication controller
+const postAuthentication = require('./common_controllers/postAuthenticationController')
 
 //This functionality adds a new researcher with all the required fields from the body.
-const addNewResearcher = (req, res) => {
-  //Encrypt the password
-  bcrypt.hash(req.body.rpassword, 10, function (err, hash) {
-    //Error
-    if (err) {
-      LOGGER.info(
-        Date.now + ' Error occured in ' + FILE_NAME + ' message: ' + err
-      )
-      res.json({ error: CONSTANTS.ERROR_DESCRIPTION.SERVERERROR })
-    }
-    //Creating the variable to hold the data for fields
+const addNewResearcher = (req, res, next) => {
+  var searchcriteria = { remail: req.body.remail }
+  let newResearcher = new Researcher({
+    rfirstName: req.body.rfirstName,
+    rlastName: req.body.rlastName,
+    remail: req.body.remail,
+    rage: req.body.rage,
+    rgender: req.body.rgender,
+    rinstitute: req.body.rinstitute
+  })
+  adduser.addnewUser(
+    res,
+    next,
+    Researcher,
+    searchcriteria,
+    FILE_NAME,
+    req.body.rpassword,
+    newResearcher,
+    'Researcher'
+  )
+}
+
+//This function gets all the researchers currently in the database.
+const getResearchers = (res, next) => {
+  mongooseMiddleware.findALL(Researcher, res, next, FILE_NAME)
+}
+
+//This function will retrieve a researchers info based on it's ID which is auto generated in mongoDB.
+const getResearcherWithID = (req, res, next) => {
+  postAuthentication.postAuthentication(
+    req,
+    res,
+    next,
+    publicKEY,
+    FILE_NAME,
+    req.params.researcherID,
+    mongooseMiddleware.findbyID,
+    Researcher,
+    null
+  )
+}
+
+//Updates the researchers information.
+const updateResearcher = (req, res, next) => {
+    let hash = bcrypt.hash(req.body.rpassword, 10)
     let newResearcher = new Researcher({
       rfirstName: req.body.rfirstName,
       rlastName: req.body.rlastName,
       remail: req.body.remail,
       rpassword: hash,
-      rphone: req.body.rphone,
       rage: req.body.rage,
-      rinstitute: req.body.rinstitute
+      rinstitute: req.body.rinstitute,
+      rgender: req.body.rgender
     })
-    //Saving the data into the database.
-    newResearcher.save((err, researcher) => {
-      //Error
-      if (err) {
-        LOGGER.info(
-          Date.now + ' Error occured in ' + FILE_NAME + ' message: ' + err
-        )
-        res.json({ error: CONSTANTS.ERROR_DESCRIPTION.SERVERERROR })
-      }
-      //Return the success mesage if successfully added.
-      LOGGER.info(
-        Date.now +
-          ' Successfully created new user ' +
-          FILE_NAME +
-          ' user: ' +
-          req.body.remail
-      )
-      res.json({ data: CONSTANTS.SUCCESS_DESCRIPTION.SUCCESS })
-    })
-  })
-}
-
-//This function gets all the researchers currently in the database.
-const getResearchers = (req, res) => {
-  Researcher.find({}, (err, researcher) => {
-    if (err) {
-      LOGGER.info(
-        Date.now + ' Error occured in ' + FILE_NAME + ' message: ' + err
-      )
-      res.json({ error: CONSTANTS.ERROR_DESCRIPTION.NOT_FOUND })
-    }
-    LOGGER.info(
-      Date.now +
-        ' Successfully searched for all researchers ' +
-        FILE_NAME +
-        ' user: ' +
-        req.body.remail
+    var upsertData = newResearcher.toObject()
+    delete upsertData._id
+    postAuthentication.postAuthentication(
+      req,
+      res,
+      next,
+      publicKEY,
+      FILE_NAME,
+      req.params.researcherID,
+      mongooseMiddleware.updateData,
+      Researcher,
+      upsertData
     )
-    res.json({ data: researcher })
-  })
-}
-
-//This function will retrieve a researchers info based on it's ID which is auto generated in mongoDB.
-const getResearcherWithID = (req, res) => {
-  Researcher.findById(req.params.researcherID, (err, researcher) => {
-    if (err) {
-      LOGGER.info(
-        Date.now + ' Error occured in' + FILE_NAME + 'message: ' + err
-      )
-      res.json({ error: CONSTANTS.ERROR_DESCRIPTION.NOT_FOUND })
-    }
-    LOGGER.info(
-      Date.now +
-        ' Successfully searched for researcher ' +
-        FILE_NAME +
-        ' user: ' +
-        req.body.remail
-    )
-    res.json({ data: researcher })
-  })
-}
-
-//Updates the researchers information.
-const updateResearcher = (req, res) => {
-  let hash = bcrypt.hash(req.body.rpassword, 10)
-  let newResearcher = new Researcher({
-    rfirstName: req.body.rfirstName,
-    rlastName: req.body.rlastName,
-    remail: req.body.remail,
-    rpassword: hash,
-    rphone: req.body.rphone,
-    rage: req.body.rage,
-    rinstitute: req.body.rinstitute
-  })
-  Researcher.findOneAndUpdate(
-    { _id: req.params.researcherID },
-    newResearcher,
-    { new: true, useFindAndModify: false },
-    (err, researcher) => {
-      if (err) {
-        LOGGER.info(
-          Date.now + ' Error occured in ' + FILE_NAME + ' message: ' + err
-        )
-        res.json({ error: CONSTANTS.ERROR_DESCRIPTION.NOT_FOUND })
-      }
-      LOGGER.info(
-        Date.now +
-          ' Successfully updated user ' +
-          FILE_NAME +
-          ' user: ' +
-          req.body.remail
-      )
-      res.json({ data: researcher })
-    }
-  )
 }
 
 //Delete the researchers information.
-const deleteResearcher = (req, res) => {
-  Researcher.deleteOne({ _id: req.params.researcherID }, (err, researcher) => {
-    if (err) {
-      LOGGER.info(
-        Date.now + ' Error occured in' + FILE_NAME + 'message: ' + err
-      )
-      res.json({ error: CONSTANTS.ERROR_DESCRIPTION.NOT_FOUND })
-    }
-    LOGGER.info(
-      Date.now +
-        ' Successfully deleted user ' +
-        FILE_NAME +
-        ' user: ' +
-        req.body.remail
-    )
-    res.json({ data: CONSTANTS.SUCCESS_DESCRIPTION.SUCCESS })
-  })
+const deleteResearcher = (req, res, next) => {
+  postAuthentication.postAuthentication(
+    req,
+    res,
+    next,
+    publicKEY,
+    FILE_NAME,
+    req.params.researcherID,
+    mongooseMiddleware.deleteData,
+    Researcher,
+    null
+  )
 }
 
 //Authenticate the researcher.
-const getResearcherLogin = (req, res) => {
+const getResearcherLogin = (req, res, next) => {
   //Check of the researcher exists using their email ID.
-  Researcher.findOne({ remail: req.body.remail }).then(researcher => {
-    //If the researcher doesnot exist.
-    if (!researcher) {
-      //Error
-      LOGGER.info(
-        Date.now +
-          ' Invalid email/password ' +
-          FILE_NAME +
-          ' message: ' +
-          req.body.remail
-      )
-      res.json({ error: CONSTANTS.ERROR_DESCRIPTION.LOGINERROR })
-    } else {
-      //If the researcher exists then compare their password entered with the password in the database
-      bcrypt.compare(
-        req.body.rpassword.toString(),
-        researcher.rpassword.toString(),
-        function (err, match) {
-          //If password same create the json web token.
-          if (match == true) {
-            var payload = {
-              email: researcher.remail.toString()
-            }
-            var token = jwt.sign(payload, privateKEY, signOptions)
-            //return the token
-            LOGGER.info(
-              Date.now +
-                'Successful Login' +
-                FILE_NAME +
-                ' user: ' +
-                req.body.remail
-            )
-            res.json({ token: token })
-          } else {
-            //error
-            LOGGER.info(
-              Date.now +
-                ' Invalid email/password ' +
-                FILE_NAME +
-                'user: ' +
-                req.body.remail
-            )
-            res.json({ error: CONSTANTS.ERROR_DESCRIPTION.LOGINERROR })
-          }
-        }
-      )
-    }
-  })
+  if (req.params === undefined) {
+    CONSTANTS.createLogMessage(FILE_NAME, 'Parameter not found', 'ERROR')
+    CONSTANTS.createResponses(
+      res,
+      CONSTANTS.ERROR_CODE.NOT_FOUND,
+      'Parameter not found',
+      next
+    )
+  } else {
+  loginController.loginAuthentication(
+    Researcher,
+    req,
+    res,
+    next,
+    req.body.rpassword,
+    FILE_NAME,
+    privateKEY,
+    'Researcher'
+  )
+  }
 }
 
+//This can be used if a volunteer wants to pull up a Researcher info before applying for the job.
+const getResearcherInfoWithID = (req, res, next) => {
+  if (req.params === undefined) {
+    CONSTANTS.createLogMessage(FILE_NAME, 'Parameter not found', 'ERROR')
+    CONSTANTS.createResponses(
+      res,
+      CONSTANTS.ERROR_CODE.NOT_FOUND,
+      'Parameter not found',
+      next
+    )
+  } else {
+  mongooseMiddleware.findbyID(
+    Researcher,
+    res,
+    next,
+    FILE_NAME,
+    req.params.researcherID
+  )
+  }
+}
+//Function to find user based on name or email
+const findResearcher = (req, res, next) => {
+  if (req.params === undefined) {
+    CONSTANTS.createLogMessage(FILE_NAME, 'Parameter not found', 'ERROR')
+    CONSTANTS.createResponses(
+      res,
+      CONSTANTS.ERROR_CODE.NOT_FOUND,
+      'Parameter not found',
+      next
+    )
+  } else {
+    if (req.params.search.toString().includes(' ')) {
+      var name = req.params.search.toString().split(' ')
+      var searchcriteria = { rfirstName: name[0], rlastName: name[1] }
+    } else if (req.params.search.toString().includes('@')) {
+      var searchcriteria = { remail: req.params.search.toString() }
+    } else {
+      var searchcriteria = {
+        $or: [
+          { rfirstName: req.params.search.toString() },
+          { rlastName: req.params.search.toString() }
+        ]
+      }
+    }
+    mongooseMiddleware.findOne(Researcher, res, next, FILE_NAME, searchcriteria)
+  }
+}
 module.exports = {
   addNewResearcher,
   getResearcherLogin,
   getResearcherWithID,
   deleteResearcher,
   getResearchers,
-  updateResearcher
+  updateResearcher,
+  getResearcherInfoWithID,
+  findResearcher
 }

@@ -5,11 +5,11 @@
  * createdDate: 03/28/2020
  */
 
-const mongoose=require('mongoose');
+const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 //This model defines the data fields we will be storing in the database.
-module.exports= ResearcherSchema = new Schema({
+module.exports = ResearcherSchema = new Schema({
   rfirstName: {
     type: String,
     required: 'First name is required'
@@ -20,21 +20,20 @@ module.exports= ResearcherSchema = new Schema({
   },
   remail: {
     type: String,
-    required: 'Email ID is required',
-    unique: true
+    required: 'Email ID is required'
   },
 
-  rpassword:{
-    type:String,
+  rpassword: {
+    type: String,
     required: 'Password is required'
   },
-  rphone: {
-    type: Number,
-    unique: true
+  rgender: {
+    type: String,
+    required: 'Gender is required'
   },
   rcreated_date: {
     type: Date,
-    default: Date.now
+    default: Date.now()
   },
   rage: {
     type: Number,
@@ -45,8 +44,12 @@ module.exports= ResearcherSchema = new Schema({
     type: String,
     required: 'Institute is required'
   },
-  type:{
+  type: {
     type: String,
-    default:'Researcher'
+    default: 'Researcher'
+  },
+  loginAttempts:{
+    type:Number,
+    default:0
   }
 })
