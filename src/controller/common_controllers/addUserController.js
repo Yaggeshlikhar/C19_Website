@@ -11,21 +11,23 @@ const bcrypt = require('bcrypt')
 const CONSTANTS = require('../../CONSTANTS/constants')
 //import mongoose queries
 const mongooseMiddleware = require('../../middleware/mongooseMiddleware')
-//import login constants
-const loginMiddleware=require('../../middleware/loginMiddleware')
+//import login middleware
+const loginMiddleware = require('../../middleware/loginMiddleware')
+//import email middleware
+const emailMiddleware = require('../../middleware/emailMiddleware')
 
 const addnewUser = (
+  req,
   res,
   next,
   schema,
   searchcriteria,
   FILE_NAME,
   password,
-  data,
-  type
+  data
 ) => {
   loginMiddleware
-    .checkifDataExists(schema, searchcriteria, FILE_NAME)
+    .checkifDataExists(schema,req,res,next, searchcriteria, FILE_NAME)
     .then(result => {
       if (result === null) {
         //Encrypt the password
@@ -42,13 +44,29 @@ const addnewUser = (
               next
             )
           }
-          if (type === 'Volunteer') {
-            data.vpassword = hash
-          } else if (type === 'Researcher') {
-            data.rpassword = hash
-          }
+          data.password = hash
           //Save the data
-          mongooseMiddleware.addNewData(data, res, next, FILE_NAME)
+          mongooseMiddleware.addNewUser(data, FILE_NAME).then(result => {
+            if (result != undefined && result != null) {
+              var link =
+                '"http://'+req.hostname+':3000/dev/email/confirmEmail/' +
+                result._id +
+                '"'
+              var message =
+                '<p>You have successfully registered to our website as a ' +
+                result.type +
+                '. Please click the link below to confirm your email<p><br><br>' +
+                emailMiddleware.createEmailAuthenticationMail(link)
+              emailMiddleware.sendEmail(
+                'admin@skunkworks.com',
+                result.email,
+                'Welcome to NEU SKUNKWORKS',
+                message,
+                res,
+                FILE_NAME
+              )
+            }
+          })
         })
       } else {
         //Create the log message

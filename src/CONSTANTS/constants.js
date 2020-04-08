@@ -6,6 +6,8 @@
  * @description constants
  */
 
+//const mongoDBUrl='mongodb://skunk:skunkcovid19@54.226.1.143:27017/CVD19DEV'
+const mongoDBUrl='mongodb://localhost:27017/CVD19DEV'
 //importing logger file
 const LOGGER = require('../Logger/logger')
 //Specifying the verifying options for json web token
@@ -18,7 +20,26 @@ var signOptions = {
   expiresIn: '12h',
   algorithm: 'RS256'
 }
+var generator = require('generate-password')
+var createTime=()=>{
+//Declare a date variable
+let today = new Date()
+//Extract all the information needed from the above variable
+let date =
+  today.getFullYear() +
+  '-' +
+  (today.getMonth() + 1) +
+  '-' +
+  today.getDate() +
+  '-' +
+  today.getHours() +
+  ':' +
+  today.getMinutes() +
+  ':' +
+  today.getSeconds()
 
+  return date
+}
 //Specifying the error codes
 const ERROR_CODE = {
   NOT_FOUND: 409,
@@ -56,23 +77,9 @@ Function to create the log message and insert it in the log file. Takes the foll
 3. type = What type of message
 */
 const createLogMessage = (FILE_NAME, message, type) => {
-  //Declare a date variable
-  let today = new Date()
-  //Extract all the information needed from the above variable
-  let date =
-    today.getFullYear() +
-    '-' +
-    (today.getMonth() + 1) +
-    '-' +
-    today.getDate() +
-    '-' +
-    today.getHours() +
-    ':' +
-    today.getMinutes() +
-    ':' +
-    today.getSeconds()
+  
   //Log the data in the log into
-  LOGGER.info(date + ' ' + type + ' ' + FILE_NAME + ' message: ' + message)
+  LOGGER.info(createTime() + ' ' + type + ' ' + FILE_NAME + ' message: ' + message)
 }
 /*
 Function to create a response. Takes the following input
@@ -105,6 +112,10 @@ const createResponseWithoutNext = (res, statuscode, data) => {
   return
 }
 
+var temppassword = generator.generateMultiple(1, {
+  length: 15,
+  uppercase: false
+})
 //Export the modules
 module.exports = {
   ERROR_CODE,
@@ -114,5 +125,8 @@ module.exports = {
   signOptions,
   verifyOptions,
   createResponses,
-  createResponseWithoutNext
+  createResponseWithoutNext,
+  createTime,
+  temppassword,
+  mongoDBUrl
 }

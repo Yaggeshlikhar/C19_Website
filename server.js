@@ -11,36 +11,57 @@ const mongoose = require('mongoose')
 const app = express()
 const cors = require('cors')
 const path = require('path')
-
+const CONSTANTS=require('./src/CONSTANTS/constants')
 //Save the log details
 const LOGGER = require(path.resolve('.') + '/src/Logger/logger.js')
-
+const FILE_NAME='server.js'
 //Port to expose
 const port = 3000
-require('dotenv').config()
 
 //import the basic routes folder
 const basicRoutes = require(path.resolve('.') + '/src/Routes/basicroutes.js')
-//import the volunteers route
-const volunteerRoutes = require(path.resolve('.') +
-  '/src/Routes/volunteerRoutes.js')
-//import the researchers route
-const researcherRoutes = require(path.resolve('.') +
-  '/src/Routes/researcherRoutes.js')
-//import the job postings route
+//import the user routes
+const userRoutes = require(path.resolve('.') + '/src/Routes/userRoutes.js')
 const jobPostingRoutes = require(path.resolve('.') +
   '/src/Routes/jobPostingRoutes.js')
 //import the job applications route
 const jobApplicationsRoutes = require(path.resolve('.') +
   '/src/Routes/jobApplicationsRoutes.js')
+//import the email routes
+const emailRoutes = require(path.resolve('.') + '/src/Routes/emailRoutes.js')
+
+//import the email routes
+const passwordRoutes = require(path.resolve('.') +
+  '/src/Routes/passwordRoutes.js')
+
 
 //mongoose connection
 mongoose.Promise = global.Promise
-mongoose.connect('mongodb://localhost/CVD19', {
-  useNewUrlParser: 'true',
-  useUnifiedTopology: 'true',
-  useCreateIndex: true
-})
+mongoose.connect(
+  CONSTANTS.mongoDBUrl,
+  {
+    useNewUrlParser: 'true',
+    useUnifiedTopology: 'true',
+    useCreateIndex: true
+  },
+  (err, db) => {
+    //
+    if (err) {
+      CONSTANTS.createLogMessage(
+        FILE_NAME,
+        err,
+        'MONGODBCONNECTIONERROR'
+      )
+      
+    } else {
+      CONSTANTS.createLogMessage(
+        FILE_NAME,
+        'Connection established to '+CONSTANTS.mongoDBUrl,
+        'MONGODBCONNECTIONSUCCESS'
+      )
+    }
+  }
+)
 
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json())
@@ -48,14 +69,16 @@ app.use(cors())
 
 //basic route
 app.use('/', basicRoutes)
-//Routes for volunteers
-app.use('/dev/volunteer', volunteerRoutes)
-//Routes for Researchers
-app.use('/dev/researcher', researcherRoutes)
+//Routes for users
+app.use('/dev/user', userRoutes)
 //Routes for job Postings
 app.use('/dev/jobPosting', jobPostingRoutes)
 //Routes for job Applications
-app.use('/dev/jobApplications', jobApplicationsRoutes)
+app.use('/dev/jobApplication', jobApplicationsRoutes)
+//Routes for email
+app.use('/dev/email', emailRoutes)
+//Routes for password reset
+app.use('/dev/password', passwordRoutes)
 
 app.listen(port, function () {
   LOGGER.debug('Express server listening on port %s.', port)
